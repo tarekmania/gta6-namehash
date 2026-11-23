@@ -1,15 +1,22 @@
 #!/usr/bin/env python3
 """gta6-namehash — resolve GTA 6 (RAGE 9) joaat hashes to names.
 
-Two subcommands:
+Two tiers of answer:
 
-  build    Harvest identifiers from public GTA V / RDR name sources and write a
-           hash -> names dictionary. Computes BOTH the case-sensitive joaat
-           (GTA 6 struct/field convention) and the lower-case joaat, so a hash
-           resolves whichever way the game hashed it. Uses no game files.
+  * confirmed — a GTA 6 reverse-engineering project (the format notes, SixNG)
+    has assigned this name to this hash while working with the real data.
+  * candidate — a public GTA V name whose joaat equals the hash. Very likely
+    the real name, but a hash match alone, so verify it in context.
 
-  resolve  Take hashes (from args, a file, or by scanning text for 8-hex and
-           0xAAAA_BBBB tokens) and print the name(s) each one resolves to.
+Subcommands:
+
+  build            Harvest identifiers from public GTA V / RDR name sources and
+                   write the candidate dictionary (both case-sensitive and
+                   lower-case joaat). No game files.
+  build-confirmed  Scan GTA 6 RE repos for hash<->name pairs they assert, and
+                   write the confirmed dictionary. Re-run as those repos grow.
+  resolve          Take hashes (args, files, or stdin) and print each one's
+                   name and tier.
 
 Stdlib only. Python 3.8+.
 """
@@ -23,9 +30,7 @@ SKIP_EXT = {".png", ".jpg", ".jpeg", ".gif", ".dds", ".bin", ".ytd", ".ydr",
             ".zip", ".7z", ".exe", ".dll", ".pdb", ".wav", ".ogg", ".mp3"}
 
 
-def harvest(paths, max_bytes=60_000_000):
-    """Yield every identifier-shaped token found under each path."""
-    names = set()
+def iter_text(paths, max_bytes=60_000_000):
     for root in paths:
         files = [root] if os.path.isfile(root) else glob.glob(root + "/**/*", recursive=True)
         for f in files:
@@ -37,15 +42,21 @@ def harvest(paths, max_bytes=60_000_000):
                 if os.path.getsize(f) > max_bytes:
                     continue
                 with open(f, errors="ignore") as fh:
-                    text = fh.read()
+                    yield fh.read()
             except OSError:
                 continue
-            names.update(IDENT.findall(text))
-    return names
+
+
+def extract_hashes(text):
+    out = [int(m.group(1), 16) for m in HEX8.finditer(text)]
+    out += [int(m.group(1) + m.group(2), 16) for m in HEXU.finditer(text)]
+    return out
 
 
 def cmd_build(args):
-    names = harvest(args.source)
+    names = set()
+    for text in iter_text(args.source):
+        names.update(IDENT.findall(text))
     table = {}
     for n in names:
         for h in (joaat_exact(n), joaat_exact(n.lower())):
@@ -53,15 +64,25 @@ def cmd_build(args):
     out = {h: sorted(v) for h, v in sorted(table.items())}
     with open(args.out, "w") as f:
         json.dump(out, f, separators=(",", ":"))
-    stats = {
-        "names_harvested": len(names),
-        "distinct_hashes": len(out),
-        "sources": args.source,
-    }
-    with open(os.path.splitext(args.out)[0] + ".stats.json", "w") as f:
-        json.dump(stats, f, indent=2)
-    print(f"{len(names):,} names -> {len(out):,} distinct hashes")
-    print(f"wrote {args.out} ({os.path.getsize(args.out)//1024:,} KiB)")
+    print(f"{len(names):,} names -> {len(out):,} distinct hashes ({os.path.getsize(args.out)//1024:,} KiB)")
+
+
+def cmd_build_confirmed(args):
+    """A confirmed pair is a name AND a hash that equals its joaat, both present
+    in the same file of a GTA 6 RE repo — i.e. the repo assigned that name."""
+    conf = {}
+    for text in iter_text(args.source):
+        written = set(extract_hashes(text))
+        if not written:
+            continue
+        for n in set(IDENT.findall(text)):
+            for h in (joaat_exact(n), joaat_exact(n.lower())):
+                if h in written:
+                    conf.setdefault(f"{h:08x}", set()).add(n)
+    out = {h: sorted(v) for h, v in sorted(conf.items())}
+    with open(args.out, "w") as f:
+        json.dump(out, f, separators=(",", ":"))
+    print(f"{len(out):,} confirmed hash->name pairs -> {args.out}")
 
 
 def load_dict(path):
@@ -69,17 +90,9 @@ def load_dict(path):
         return json.load(f)
 
 
-def extract_hashes(text):
-    out = []
-    for m in HEX8.finditer(text):
-        out.append(int(m.group(1), 16))
-    for m in HEXU.finditer(text):
-        out.append(int(m.group(1) + m.group(2), 16))
-    return out
-
-
 def cmd_resolve(args):
-    d = load_dict(args.dict)
+    cand = load_dict(args.dict)
+    conf = load_dict(args.confirmed) if os.path.exists(args.confirmed) else {}
     hashes = []
     for a in args.hashes:
         a = a.strip().lower().replace("0x", "").replace("_", "")
@@ -95,20 +108,25 @@ def cmd_resolve(args):
     for h in hashes:
         if h not in seen:
             seen.add(h); uniq.append(h)
-    named = miss = 0
+    n_conf = n_cand = miss = 0
     for h in uniq:
-        names = d.get(f"{h:08x}")
-        if names:
-            named += 1
+        key = f"{h:08x}"
+        if key in conf:
+            n_conf += 1
             if not args.unresolved:
-                print(f"{h:08x}\t{', '.join(names)}")
+                print(f"{h:08x}\t{', '.join(conf[key])}\t[confirmed]")
+        elif key in cand:
+            n_cand += 1
+            if not args.unresolved:
+                print(f"{h:08x}\t{', '.join(cand[key])}\t[candidate]")
         else:
             miss += 1
             if args.unresolved or args.show_missing:
                 print(f"{h:08x}\t?")
-    sys.stderr.write(f"\nresolved {named}/{len(uniq)} ({miss} unresolved)\n")
-    if named:
-        sys.stderr.write("names are joaat candidates (a hash match, not a confirmed GTA 6 name) — verify in context\n")
+    sys.stderr.write(f"\n{n_conf} confirmed, {n_cand} candidate, {miss} unresolved "
+                     f"(of {len(uniq)})\n")
+    if n_cand:
+        sys.stderr.write("candidates are joaat matches, not confirmed GTA 6 names — verify in context\n")
 
 
 def main():
@@ -116,14 +134,20 @@ def main():
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    b = sub.add_parser("build", help="harvest sources -> dictionary.json")
-    b.add_argument("source", nargs="+", help="public name-source dirs or files (no game files)")
+    b = sub.add_parser("build", help="public name sources -> candidate dictionary")
+    b.add_argument("source", nargs="+", help="public GTA V / RDR name dirs or files (no game files)")
     b.add_argument("-o", "--out", default="dictionary.json")
     b.set_defaults(func=cmd_build)
+
+    c = sub.add_parser("build-confirmed", help="GTA 6 RE repos -> confirmed dictionary")
+    c.add_argument("source", nargs="+", help="dirs of GTA 6 RE repos (format notes, SixNG, ...)")
+    c.add_argument("-o", "--out", default="confirmed.json")
+    c.set_defaults(func=cmd_build_confirmed)
 
     r = sub.add_parser("resolve", help="resolve hashes to names")
     r.add_argument("hashes", nargs="*", help="hashes as 8-hex or 0xAAAA_BBBB")
     r.add_argument("-d", "--dict", default="dictionary.json")
+    r.add_argument("--confirmed", default="confirmed.json", help="confirmed dictionary (if present)")
     r.add_argument("-f", "--file", nargs="+", help="scan file(s) for hashes and resolve")
     r.add_argument("--unresolved", action="store_true", help="print only the hashes with no name")
     r.add_argument("--show-missing", action="store_true", help="also print unresolved as ?")

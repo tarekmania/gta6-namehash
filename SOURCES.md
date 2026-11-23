@@ -28,3 +28,13 @@ python3 namehash.py build \
 Extra sources only add names; a wrong name never resolves a real hash by
 chance (a 32-bit joaat collision is about 1 in 4 billion), so widening the
 corpus is safe.
+
+## Confirmed layer
+
+`confirmed.json` is built from GTA 6 reverse-engineering repos that assign names
+to real hashes:
+
+- [TrinitronClient/GTA6-Asset-Info](https://github.com/TrinitronClient/GTA6-Asset-Info) — format notes
+- [holdmysocks/SixNG](https://github.com/holdmysocks/SixNG) — asset extractor and its name tables
+
+Re-run `build-confirmed` against these (and any new ones) to refresh it.

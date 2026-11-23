@@ -1,6 +1,6 @@
 # gta6-namehash
 
-Resolve GTA 6 (RAGE 9) `joaat` hashes to candidate names.
+Resolve GTA 6 (RAGE 9) `joaat` hashes to names, each flagged **confirmed** or **candidate**.
 
 GTA 6 stores most of its field, struct, and enum names as 32-bit `joaat`
 hashes. Every tool and format project in the scene re-solves the same problem:
@@ -28,6 +28,22 @@ Two things make GTA 6 different from a plain GTA V name lookup:
 Pointed at the community's own format notes, it resolves **85 of 375** of the
 hashes in them automatically — including several the notes hadn't named yet.
 
+## Two tiers: confirmed and candidate
+
+A result comes back as one of two kinds, because they carry very different
+certainty:
+
+- **confirmed** — a GTA 6 reverse-engineering project (the format notes, SixNG)
+  has already assigned this name to this hash while working with the real data.
+  As close to certain as it gets short of the source.
+- **candidate** — a public GTA V name whose `joaat` equals the hash. Almost
+  always the real name, but it is a hash match alone, so verify it in context.
+
+The confirmed layer is rebuilt from those repos, so as more names are pinned
+down (the leaked executable will confirm plenty), re-running `build-confirmed`
+moves them from candidate to confirmed. The tool stays the single place to
+resolve a hash as the scene shifts from predicting names to confirming them.
+
 ## Use it
 
 Resolve a few hashes (works out of the box against the committed
@@ -37,10 +53,14 @@ Resolve a few hashes (works out of the box against the committed
 python3 namehash.py resolve 0b1811f1 d3593fa6 8d6b17bd
 ```
 ```
-0b1811f1	CMloRoomDef
-d3593fa6	CMapData
-8d6b17bd	BankName
+0b1811f1	CMloRoomDef	[confirmed]
+d3593fa6	CMapData	[confirmed]
+8d6b17bd	BankName	[confirmed]
 ```
+
+A GTA V name that isn't pinned to GTA 6 data yet comes back as a candidate
+(`04eb080e` → `CWeaponInfo` `[candidate]`), and a hash with no name at all stays
+unresolved.
 
 Resolve every hash in a file or a whole source tree — point it at a tool's
 code or a spec and get everything it can name:
@@ -58,7 +78,19 @@ python3 namehash.py resolve -f notes/*.md --unresolved
 It reads hashes written as `0b1811f1`, `` `0b1811f1` ``, or `0xAAAA_BBBB`, and
 also takes them on stdin.
 
-## Build the dictionary yourself
+## Keep the confirmed layer current
+
+The confirmed names are scanned straight out of the GTA 6 RE repos. Re-run this
+as they grow:
+
+```
+python3 namehash.py build-confirmed <GTA6-Asset-Info> <SixNG> -o confirmed.json
+```
+
+It records a hash → name only where a repo contains both the hash and a name
+whose `joaat` equals it — i.e. where the project actually assigned it.
+
+## Build the candidate dictionary yourself
 
 The committed `dictionary.json` is reproducible. Clone the public sources and
 rebuild:
@@ -93,9 +125,10 @@ The current dictionary: ~309k names → ~498k distinct hashes.
 
 | File | |
 |---|---|
-| `namehash.py` | the CLI (`build`, `resolve`) — stdlib only, Python 3.8+ |
+| `namehash.py` | the CLI (`build`, `build-confirmed`, `resolve`) — stdlib only, Python 3.8+ |
 | `joaat.py` | `joaat_exact` and `joaat` |
-| `dictionary.json` | the committed hash → names map |
+| `dictionary.json` | the candidate map (GTA V names → hash) |
+| `confirmed.json` | names pinned to hashes by GTA 6 RE projects |
 | `tests/test_joaat.py` | known-answer tests |
 | `SOURCES.md` | provenance and how to add corpora |
 
