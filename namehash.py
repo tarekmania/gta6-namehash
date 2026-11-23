@@ -107,6 +107,8 @@ def cmd_resolve(args):
             if args.unresolved or args.show_missing:
                 print(f"{h:08x}\t?")
     sys.stderr.write(f"\nresolved {named}/{len(uniq)} ({miss} unresolved)\n")
+    if named:
+        sys.stderr.write("names are joaat candidates (a hash match, not a confirmed GTA 6 name) — verify in context\n")
 
 
 def main():

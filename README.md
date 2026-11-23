@@ -1,6 +1,6 @@
 # gta6-namehash
 
-Resolve GTA 6 (RAGE 9) `joaat` hashes to names.
+Resolve GTA 6 (RAGE 9) `joaat` hashes to candidate names.
 
 GTA 6 stores most of its field, struct, and enum names as 32-bit `joaat`
 hashes. Every tool and format project in the scene re-solves the same problem:
@@ -74,12 +74,18 @@ database.
 
 ## How it works
 
-Every identifier-shaped token in the sources is hashed two ways — as written
-and lower-cased — and filed under both hashes. Resolution is a dictionary
-lookup. A wrong name never resolves a real hash by accident: a 32-bit `joaat`
-collision is about 1 in 4 billion, so across the whole dictionary fewer than
-one false match is expected. That's why a broad, slightly noisy corpus is safe
-— the hash does the filtering.
+Every identifier-shaped token in the sources is hashed two ways, as written
+and lower-cased, and filed under both hashes. Resolution is a dictionary
+lookup.
+
+**A match is a candidate, not a confirmed name.** The tool only compares
+hashes, so what it returns is the public GTA V name whose `joaat` equals your
+hash. For the large majority that is the real name, because a 32-bit `joaat`
+collision is about 1 in 4 billion and fewer than one false match is expected
+across the whole dictionary. But a name that is new in GTA 6 and happens to
+collide with a GTA V name would show that GTA V name instead of staying blank,
+so treat a result as a strong lead to verify in context, not as proof. A hash
+with no entry stays unresolved rather than guessing.
 
 The current dictionary: ~309k names → ~498k distinct hashes.
 
