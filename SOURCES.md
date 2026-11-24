@@ -1,6 +1,6 @@
 # Name sources
 
-The dictionary is built only from **public GTA V / RDR name lists**. No game
+The dictionary is built only from **public GTA V name lists**. No game
 files, assets, or keys from GTA 6 are used, read, or redistributed — only
 strings that were already public, hashed with joaat.
 
@@ -24,6 +24,11 @@ python3 namehash.py build \
     path/to/RAGE-StringsDatabase \
     -o dictionary.json
 ```
+
+RDR2 lists ([femga/rdr3_discoveries](https://github.com/femga/rdr3_discoveries),
+[alloc8or/rdr3-nativedb-data](https://github.com/alloc8or/rdr3-nativedb-data))
+were checked against the unnamed hashes in the format notes on 2026-11-24 and
+named none the GTA V lists do not, so they are not in the default build.
 
 Extra sources only add names; a wrong name never resolves a real hash by
 chance (a 32-bit joaat collision is about 1 in 4 billion), so widening the
