@@ -25,8 +25,9 @@ Two things make GTA 6 different from a plain GTA V name lookup:
   each carrying its own partial name list. This unifies the public sources into
   one file any tool, in any language, can load.
 
-Pointed at the community's own format notes, it resolves **85 of 375** of the
-hashes in them automatically — including several the notes hadn't named yet.
+Pointed at the community's own format notes, it resolves **384 of 1,706** of
+the hashes in them automatically (359 confirmed, 25 candidate; notes as of
+2026-11-24) — including several the notes hadn't named yet.
 
 ## Two tiers: confirmed and candidate
 
