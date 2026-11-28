@@ -25,8 +25,8 @@ Two things make GTA 6 different from a plain GTA V name lookup:
   each carrying its own partial name list. This unifies the public sources into
   one file any tool, in any language, can load.
 
-Pointed at the community's own format notes, it resolves **384 of 1,706** of
-the hashes in them automatically (359 confirmed, 25 candidate; notes as of
+Pointed at the community's own format notes, it resolves **521 of the 907**
+hashes in them automatically (510 confirmed, 11 candidate; notes as of
 2026-11-24) — including several the notes hadn't named yet.
 
 ## Two tiers: confirmed and candidate
@@ -41,11 +41,22 @@ certainty:
   always the real name, but it is a hash match alone, so verify it in context.
 
 The confirmed layer is rebuilt from those repos, so as more names are pinned
-down (the leaked executable will confirm plenty), re-running `build-confirmed`
-moves them from candidate to confirmed. The tool stays the single place to
+down, re-running `build-confirmed` moves them from candidate to confirmed. The tool stays the single place to
 resolve a hash as the scene shifts from predicting names to confirming them.
 
 ## Use it
+
+### In SixNG
+
+SixNG reads the dictionary as a last-resort name source. Download
+[`dictionary.json`](https://raw.githubusercontent.com/tarekmania/gta6-namehash/main/dictionary.json)
+(always the current file) and import it once:
+
+```
+sixng names --namehash dictionary.json
+```
+
+### On its own
 
 Resolve a few hashes (works out of the box against the committed
 `dictionary.json`):
@@ -90,6 +101,11 @@ python3 namehash.py build-confirmed <GTA6-Asset-Info> <SixNG> -o confirmed.json
 
 It records a hash → name only where a repo contains both the hash and a name
 whose `joaat` equals it — i.e. where the project actually assigned it.
+
+The original GTA6-Asset-Info repo was deleted on 2026-11-25. The committed
+layer is built from the public mirror
+[Geeknasty/GTA6-Asset-Info](https://github.com/Geeknasty/GTA6-Asset-Info)
+(notes as of 2026-11-24) and SixNG.
 
 ## Build the candidate dictionary yourself
 
